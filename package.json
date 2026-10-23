@@ -1,0 +1,11 @@
+{
+    "type": "module",
+    "name": "EasyFetch Backend",
+    "scripts": {
+        "start": "node routes.js"
+    },
+    "dependencies": {
+        "cors": "^2.8.6",
+        "express": "^5.3.0"
+    }
+}

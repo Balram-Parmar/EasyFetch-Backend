@@ -1,0 +1,9 @@
+# Dependencies
+node_modules/
+
+# Environment variables
+.env
+
+# Downloaded videos
+videos/*
+!videos/.gitkeep

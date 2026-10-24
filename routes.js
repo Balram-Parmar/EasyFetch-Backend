@@ -27,10 +27,14 @@ function createDownloadRoute(downloadFn) {
                 fileName
             });
         } catch (error) {
-            console.error("Download failed:", error.message);
+            // execFile puts yt-dlp's output in stderr; error.message only holds
+            // the command line, which hides the real reason for the failure.
+            const detail = error.stderr?.trim() || error.message;
+            console.error("Download failed:", detail);
 
+            const status = Number.isInteger(error.status) ? error.status : 500;
 
-            return res.status(500).json({ "error": "error downloading the video" });
+            return res.status(status).json({ "error": "error downloading the video" });
         }
     };
 }

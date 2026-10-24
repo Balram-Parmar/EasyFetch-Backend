@@ -9,6 +9,11 @@ const runExecutable = promisify(execFile);
 export const DOWNLOAD_DIR = path.resolve("./videos");
 const YTDL_EXECUTABLE = process.env.YTDL_EXECUTABLE || "./yt-dlp";
 
+// yt-dlp 2026.x requires an external JS runtime (EJS) for full YouTube support.
+// Only "deno" is enabled by default; node is already installed because it runs
+// this server, so enable it unless the operator overrides the runtime.
+const YTDL_JS_RUNTIME = process.env.YTDL_JS_RUNTIME || "node";
+
 const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000;
 const MAX_CONCURRENT_DOWNLOADS = 3;
 const QUEUE_WAIT_MS = 60 * 1000;
@@ -18,6 +23,7 @@ const COMMON_ARGS = [
     "--no-playlist",
     "--no-simulate",
     "--force-ipv4",
+    "--js-runtimes", YTDL_JS_RUNTIME,
     "--concurrent-fragments", "4",
     "--retries", "10",
     "--fragment-retries", "10",

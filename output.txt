@@ -1,0 +1,193 @@
+ubuntu@ip-172-31-44-188:~$ cd backend
+ubuntu@ip-172-31-44-188:~/backend$ ls
+README.md  downloader.js  node_modules  package-lock.json  package.json  platforms  routes.js  videos  yt-dlp
+ubuntu@ip-172-31-44-188:~/backend$ git pull
+remote: Enumerating objects: 12, done.
+remote: Counting objects: 100% (12/12), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 7 (delta 4), reused 7 (delta 4), pack-reused 0 (from 0)
+Unpacking objects: 100% (7/7), 38.32 MiB | 12.35 MiB/s, done.
+From https://github.com/Balram-Parmar/EasyFetch-Backend
+   e46cc9e..19b13eb  main       -> origin/main
+Updating e46cc9e..19b13eb
+Fast-forward
+ cookie.txt           |  16 ++++++++++++++++
+ downloader.js        |   7 ++++---
+ platforms/youtube.js |   5 ++++-
+ yt-dlp               | Bin 40446224 -> 40569080 bytes
+ 4 files changed, 24 insertions(+), 4 deletions(-)
+ create mode 100644 cookie.txt
+ubuntu@ip-172-31-44-188:~/backend$ ls -all
+total 39708
+drwxrwxr-x  7 ubuntu ubuntu     4096 Oct 24 05:17 .
+drwxr-x---  6 ubuntu ubuntu     4096 Oct 23 14:36 ..
+drwxrwxr-x  7 ubuntu ubuntu     4096 Oct 24 05:17 .git
+-rw-rw-r--  1 ubuntu ubuntu      106 Oct 23 13:01 .gitignore
+drwxrwxr-x  5 ubuntu ubuntu     4096 Oct 24 03:59 .venv
+-rw-rw-r--  1 ubuntu ubuntu     1312 Oct 23 13:01 README.md
+-rw-rw-r--  1 ubuntu ubuntu     1706 Oct 24 05:17 cookie.txt
+-rw-rw-r--  1 ubuntu ubuntu     3620 Oct 24 05:17 downloader.js
+drwxrwxr-x 69 ubuntu ubuntu     4096 Oct 23 14:05 node_modules
+-rw-rw-r--  1 ubuntu ubuntu    35999 Oct 23 14:05 package-lock.json
+-rw-rw-r--  1 ubuntu ubuntu      199 Oct 23 13:01 package.json
+drwxrwxr-x  2 ubuntu ubuntu     4096 Oct 24 05:17 platforms
+-rw-rw-r--  1 ubuntu ubuntu     1374 Oct 23 13:01 routes.js
+drwxrwxr-x  2 ubuntu ubuntu     4096 Oct 23 13:01 videos
+-rwxrwxr-x  1 ubuntu ubuntu 40569080 Oct 24 05:17 yt-dlp
+ubuntu@ip-172-31-44-188:~/backend$ node routes.js
+Server: http://127.0.0.1:8000
+Downloads: /home/ubuntu/backend/videos
+download request recived for :https://www.youtube.com/watch?v=5EpyN_6dqyk
+Download failed: Command failed: ./yt-dlp --ignore-config --no-playlist --no-simulate --force-ipv4 --concurrent-fragments 4 --retries 10 --fragment-retries 10 --http-chunk-size 10M --buffer-size 16K --throttled-rate 100K --merge-output-format mp4 --trim-filenames 150 --no-mtime --newline --cookies /home/ubuntu/backend/cookie.txt --paths /home/ubuntu/backend/videos --output %(id)s-4a5d0e1e-cb57-44a5-9ceb-35383dcd4ef0.%(ext)s --format bv*[height<=1080]+ba/b[height<=1080]/b --print after_move:filepath -- https://www.youtube.com/watch?v=5EpyN_6dqyk
+WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one
+WARNING: [youtube] No title found in player responses; falling back to title from initial data. Other metadata may also be missing
+ERROR: [youtube] 5EpyN_6dqyk: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.com/yt-dlp/yt-dlp/wiki/Extractors#exporting-youtube-cookies  for tips on effectively exporting YouTube cookies
+
+^C
+ubuntu@ip-172-31-44-188:~/backend$ cat downloader.js 
+import path from "node:path";
+import fs from "node:fs/promises";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+import { randomUUID } from "node:crypto";
+
+const runExecutable = promisify(execFile);
+
+export const DOWNLOAD_DIR = path.resolve("./videos");
+const YTDL_EXECUTABLE = process.env.YTDL_EXECUTABLE || "./yt-dlp";
+
+const DOWNLOAD_TIMEOUT_MS = 10 * 60 * 1000;
+const MAX_CONCURRENT_DOWNLOADS = 3;
+const QUEUE_WAIT_MS = 60 * 1000;
+
+const COMMON_ARGS = [
+    "--ignore-config",
+    "--no-playlist",
+    "--no-simulate",
+    "--force-ipv4",
+    "--concurrent-fragments", "4",
+    "--retries", "10",
+    "--fragment-retries", "10",
+    "--http-chunk-size", "10M",
+    "--buffer-size", "16K",
+    "--throttled-rate", "100K",
+    "--merge-output-format", "mp4",
+    "--trim-filenames", "150",
+    "--no-mtime",
+    "--newline",
+];
+
+export function parseUrl(input) {
+    if (typeof input !== "string" || !input.trim()) {
+        return null;
+    }
+
+    try {
+        const text = input.trim();
+        const url = new URL(
+            /^https?:\/\//i.test(text) ? text : `https://${text.replace(/^\/+/, "")}`
+        );
+
+        if (!["https:", "http:"].includes(url.protocol)) {
+            return null;
+        }
+
+        return url;
+    } catch {
+        return null;
+    }
+}
+
+export function hasSafeAuthority(url) {
+    return !url.username && !url.password && !url.port;
+}
+
+let activeDownloads = 0;
+const pendingResolvers = [];
+
+async function acquireSlot() {
+    while (activeDownloads >= MAX_CONCURRENT_DOWNLOADS) {
+        await new Promise((resolve, reject) => {
+            const onError = () => {
+                const index = pendingResolvers.indexOf(release);
+                if (index !== -1) {
+                    pendingResolvers.splice(index, 1);
+                }
+
+                const busyError = new Error("Too many downloads are in progress.");
+                busyError.status = 503;
+                reject(busyError);
+            };
+
+            const timer = setTimeout(onError, QUEUE_WAIT_MS);
+            timer.unref?.();
+
+            const release = () => {
+                clearTimeout(timer);
+                resolve();
+            };
+
+            pendingResolvers.push(release);
+        });
+    }
+
+    activeDownloads += 1;
+}
+
+function releaseSlot() {
+    activeDownloads = Math.max(0, activeDownloads - 1);
+
+    const next = pendingResolvers.shift();
+    if (next) {
+        next();
+    }
+}
+
+async function downloadVideo(videoUrl, extraArgs = []) {
+    await fs.mkdir(DOWNLOAD_DIR, { recursive: true });
+
+    const outputTemplate = `%(id)s-${randomUUID()}.%(ext)s`;
+
+    const { stdout } = await runExecutable(
+        YTDL_EXECUTABLE,
+        [
+            ...COMMON_ARGS,
+            ...extraArgs,
+            "--paths",
+            DOWNLOAD_DIR,
+            "--output",
+            outputTemplate,
+            "--format",
+            "bv*[height<=1080]+ba/b[height<=1080]/b",
+            "--print",
+            "after_move:filepath",
+            "--",
+            videoUrl
+        ],
+        {
+            timeout: DOWNLOAD_TIMEOUT_MS,
+            maxBuffer: 1024 * 1024 * 16
+        }
+    );
+
+    const downloadedPath = stdout.trim().split(/\r?\n/).pop();
+
+    if (!downloadedPath) {
+        throw new Error("Downloader did not return a file path.");
+    }
+
+    await fs.access(downloadedPath);
+
+    return path.basename(downloadedPath);
+}
+
+export async function downloadWithSlot(videoUrl, extraArgs = []) {
+    await acquireSlot();
+
+    try {
+        return await downloadVideo(videoUrl, extraArgs);
+    } finally {
+        releaseSlot();
+    }
+}
+ubuntu@ip-172-31-44-188:~/backend$ 

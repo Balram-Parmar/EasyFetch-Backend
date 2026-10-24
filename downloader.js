@@ -96,7 +96,7 @@ function releaseSlot() {
     }
 }
 
-async function downloadVideo(videoUrl) {
+async function downloadVideo(videoUrl, extraArgs = []) {
     await fs.mkdir(DOWNLOAD_DIR, { recursive: true });
 
     const outputTemplate = `%(id)s-${randomUUID()}.%(ext)s`;
@@ -105,6 +105,7 @@ async function downloadVideo(videoUrl) {
         YTDL_EXECUTABLE,
         [
             ...COMMON_ARGS,
+            ...extraArgs,
             "--paths",
             DOWNLOAD_DIR,
             "--output",
@@ -133,11 +134,11 @@ async function downloadVideo(videoUrl) {
     return path.basename(downloadedPath);
 }
 
-export async function downloadWithSlot(videoUrl) {
+export async function downloadWithSlot(videoUrl, extraArgs = []) {
     await acquireSlot();
 
     try {
-        return await downloadVideo(videoUrl);
+        return await downloadVideo(videoUrl, extraArgs);
     } finally {
         releaseSlot();
     }

@@ -1,4 +1,7 @@
+import path from "node:path";
 import { downloadWithSlot, parseUrl, hasSafeAuthority } from "../downloader.js";
+
+const COOKIE_FILE = process.env.YT_COOKIE_FILE || path.resolve("./cookie.txt");
 
 export function toYouTubeUrl(input) {
     const url = parseUrl(input);
@@ -38,5 +41,5 @@ export async function download(rawUrl) {
         throw error;
     }
 
-    return downloadWithSlot(videoUrl);
+    return downloadWithSlot(videoUrl, ["--cookies", COOKIE_FILE]);
 }

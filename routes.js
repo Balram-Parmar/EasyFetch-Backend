@@ -14,6 +14,10 @@ const app = express();
 app.use(cors({ origin: "*" }));
 app.use(express.json({ limit: "10kb" }));
 
+// Serves downloaded files at /downloads/<fileName> so the frontend can preview
+// them. In production nginx handles this path directly, so this never runs.
+app.use("/downloads", express.static(DOWNLOAD_DIR));
+
 function createDownloadRoute(downloadFn) {
     return async (req, res) => {
         console.log("download request recived for :" + req.body.url)
